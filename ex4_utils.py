@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.ndimage import filters
 
 
 def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k_size: int) -> np.ndarray:
@@ -11,7 +12,27 @@ def disparitySSD(img_l: np.ndarray, img_r: np.ndarray, disp_range: (int, int), k
 
     return: Disparity map, disp_map.shape = Left.shape
     """
-    pass
+
+    height, width = img_r.shape
+    disp_map = np.zeros((height, width, disp_range[1]))
+
+    mean_left = np.zeros((height, width))
+    mean_right = np.zeros((height, width))
+
+    # calc average of our window using uniform_filter
+    filters.uniform_filter(img_l, k_size, mean_left)
+    filters.uniform_filter(img_r, k_size, mean_right)
+
+    norm_left = img_l - mean_left  # normalized left image
+    norm_right = img_r - mean_right  # normalized right image
+
+    for i in range(disp_range[1]):
+        rImg_shift = np.roll(norm_right, i)  # moving i element to the front
+        filters.uniform_filter(norm_left * rImg_shift, k_size, disp_map[:, :, i])
+        disp_map[:, :, i] = disp_map[:, :, i] ** 2  # (Li-Ri)^2
+
+    res = np.argmax(disp_map, axis=2)  # taking best depth
+    return res
 
 
 def disparityNC(img_l: np.ndarray, img_r: np.ndarray, disp_range: int, k_size: int) -> np.ndarray:
