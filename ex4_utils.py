@@ -44,7 +44,35 @@ def disparityNC(img_l: np.ndarray, img_r: np.ndarray, disp_range: int, k_size: i
 
     return: Disparity map, disp_map.shape = Left.shape
     """
-    pass
+    height, width = img_r.shape
+    disp_map = np.zeros((height, width, disp_range[1]))
+
+    mean_left = np.zeros((height, width))
+    mean_right = np.zeros((height, width))
+
+    # calc average of our window using uniform_filter
+    filters.uniform_filter(img_l, k_size, mean_left)
+    filters.uniform_filter(img_r, k_size, mean_right)
+
+    norm_left = img_l - mean_left  # normalized left image
+    norm_right = img_r - mean_right  # normalized right image
+
+    sigma_l = np.zeros((height, width))
+    sigma_r = np.zeros((height, width))
+    sigma = np.zeros((height, width))
+
+    # Calculate the average of each pixel in a (k_size)^2 window
+    filters.uniform_filter(norm_left * norm_left, k_size, sigma_l)
+
+    for i in range(disp_range[1]):
+        rImg_shift = np.roll(norm_right, i - disp_range[0])  # moving i element to the front
+        filters.uniform_filter(norm_left * rImg_shift, k_size, sigma)  # calc sigma using uniform_filter
+        filters.uniform_filter(rImg_shift * rImg_shift, k_size, sigma_r)  # calc sigma r using uniform_filter
+        sqr = np.sqrt(sigma_r * sigma_l)
+        disp_map[:, :, i] = sigma / sqr
+
+    ans = np.argmax(disp_map, axis=2)  # taking best depth
+    return ans
 
 
 def computeHomography(src_pnt: np.ndarray, dst_pnt: np.ndarray) -> (np.ndarray, float):
