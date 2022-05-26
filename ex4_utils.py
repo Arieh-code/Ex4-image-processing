@@ -147,7 +147,39 @@ def warpImag(src_img: np.ndarray, dst_img: np.ndarray) -> None:
     dst_p = np.array(dst_p)
 
     ##### Your Code Here ######
+    srcPoints = []
+    secFig = plt.figure()
 
+    def onclick_2(event):
+        x = event.xdata
+        y = event.ydata
+        print("Loc: {:.0f},{:.0f}".format(x, y))  # print to the console the locations
+
+        plt.plot(x, y, '*r')  # '*r' colored the chosen point
+        srcPoints.append([x, y])  # adding the chosen points to the dst_p array
+
+        if len(srcPoints) == 4:  # caz we need 4 points to compute homography
+            plt.close()
+        plt.show()
+
+    # display image 2
+    cid_sec = secFig.canvas.mpl_connect('button_press_event', onclick_2)
+    plt.imshow(src_img)
+    plt.show()
+    srcPoints = np.array(srcPoints)
+
+    src0 = src_img.shape[0]
+    src1 = src_img.shape[1]
+    homography, err = computeHomography(srcPoints, dst_p)
+    for Yi in range(src0):
+        for Xi in range(src1):
+            A_h = np.array([Xi, Yi, 1])
+            A_h = homography.dot(A_h)  # inner product between homography matrix and [Xi, Yi, 1]
+            A_h /= A_h[2]  # div the second row
+            dst_img[int(A_h[1]), int(A_h[0])] = src_img[Yi, Xi]
+
+    plt.imshow(dst_img)
+    plt.show()
     # out = dst_img * mask + src_out * (1 - mask)
     # plt.imshow(out)
     # plt.show()
