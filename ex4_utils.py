@@ -86,7 +86,31 @@ def computeHomography(src_pnt: np.ndarray, dst_pnt: np.ndarray) -> (np.ndarray, 
 
     return: (Homography matrix shape:[3,3], Homography error)
     """
-    pass
+    A = np.zeros((2 * len(src_pnt), 9))  # A is (2n x 9) mat
+    for pos in range(len(src_pnt)):
+        # In each iteration we fill 2 rows.
+        # src_pnt [pos] [0] is Xi and dst_pnt [pos] [0] is 'Xi
+        # Same for Yi and 'Yi (for example- opposite [pos][0] to [0][pos] )
+        A[pos * 2:pos * 2 + 2] = np.array([[-src_pnt[pos][0], -src_pnt[pos][1], -1, 0, 0, 0,
+                                            src_pnt[pos][0] * dst_pnt[pos][0], src_pnt[pos][1] * dst_pnt[pos][0],
+                                            dst_pnt[pos][0]],
+                                           [0, 0, 0, -src_pnt[pos][0], -src_pnt[pos][1], -1,
+                                            src_pnt[pos][0] * dst_pnt[pos][1], src_pnt[pos][1] * dst_pnt[pos][1],
+                                            dst_pnt[pos][1]]])
+
+    u, s, vh = np.linalg.svd(A, full_matrices=True)
+    V = np.transpose(vh)  # vh^T
+
+    H = V[:, -1].reshape(3, 3)
+    H /= V[:, -1][-1]
+
+    err = 0
+    for pos in range(len(src_pnt)):
+        Homogeneous = H.dot(np.array([src_pnt[pos, 0], src_pnt[pos, 1], 1]))
+        Homogeneous /= Homogeneous[2]
+        err += np.sqrt(sum(Homogeneous[0:-1] - dst_pnt[pos]) ** 2)
+
+    return H, err
 
 
 def warpImag(src_img: np.ndarray, dst_img: np.ndarray) -> None:
