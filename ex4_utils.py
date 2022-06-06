@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import filters
@@ -170,16 +171,20 @@ def warpImag(src_img: np.ndarray, dst_img: np.ndarray) -> None:
 
     src0 = src_img.shape[0]
     src1 = src_img.shape[1]
-    homography, err = computeHomography(srcPoints, dst_p)
+    homography, err = cv2.findHomography(srcPoints, dst_p)
+    warp = np.zeros(dst_img.shape)
     for Yi in range(src0):
         for Xi in range(src1):
-            A_h = np.array([Xi, Yi, 1])
-            A_h = homography.dot(A_h)  # inner product between homography matrix and [Xi, Yi, 1]
-            A_h /= A_h[2]  # div the second row
-            dst_img[int(A_h[1]), int(A_h[0])] = src_img[Yi, Xi]
+            xy = np.array([Xi, Yi, 1]).T
+            new_p = homography @ xy
+            y_ = int(new_p[0] / new_p[-1])
+            x_ = int(new_p[1] / new_p[-1])
+            if 0 <= x_ < src_img.shape[0] and 0 <= y_ < src_img.shape[1]:
+                warp[x_, y_] = src_img[Yi, Xi]
+            else:
+                warp[x_, y_] = src_img[Yi, Xi]
 
-    plt.imshow(dst_img)
+    mask = dst_img == 0
+    canvas = dst_img * mask + (1 - mask) * warp
+    plt.imshow(canvas)
     plt.show()
-    # out = dst_img * mask + src_out * (1 - mask)
-    # plt.imshow(out)
-    # plt.show()
